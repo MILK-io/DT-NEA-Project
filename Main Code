@@ -1,0 +1,515 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Initialize the LCD interfaces with their I2C addresses - 20x4 dimensions
+LiquidCrystal_I2C questionLCD(0x27, 20, 4);  // Question display (address 0x27)
+LiquidCrystal_I2C answerLCD1(0x26, 20, 4);   // Answer A display (address 0x26)
+LiquidCrystal_I2C answerLCD2(0x25, 20, 4);   // Answer B display (address 0x25)
+LiquidCrystal_I2C answerLCD3(0x24, 20, 4);   // Answer C display (address 0x24)
+LiquidCrystal_I2C answerLCD4(0x23, 20, 4);   // Answer D display (address 0x23)
+
+// Button pins
+const int questionButtonPin = 2;
+const int answer1ButtonPin = 3;
+const int answer2ButtonPin = 4;
+const int answer3ButtonPin = 5;
+const int answer4ButtonPin = 6;
+
+// Variables for button states
+int lastQuestionButtonState = HIGH;
+int lastAnswer1ButtonState = HIGH;
+int lastAnswer2ButtonState = HIGH;
+int lastAnswer3ButtonState = HIGH;
+int lastAnswer4ButtonState = HIGH;
+
+// Variables for debouncing
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+
+// Variables for double-click detection
+unsigned long lastClickTime = 0;
+const unsigned long doubleClickTime = 300;  // 300 ms threshold for double click
+bool singleClickPending = false;
+
+// Game variables
+int score = 0;
+int currentQuestionType = 0;  // 0: Maths, 1: Science, 2: Geography
+int currentDifficulty = 0;    // 0: Ages 4-6, 1: Ages 7-9, 2: Ages 10-12
+int currentQuestionIndex = 0;
+
+// Constants for types and difficulties
+const int NUM_QUESTION_TYPES = 3;
+const int NUM_DIFFICULTY_LEVELS = 3;
+String questionTypes[3] = {"MATHS", "SCIENCE", "GEOGRAPHY"};
+String difficultyLevels[3] = {"Ages 4-6", "Ages 7-9", "Ages 10-12"};
+
+// Display status variables
+unsigned long statusDisplayStartTime = 0;
+const unsigned long statusDisplayDuration = 5000; // 5 seconds
+bool showingStatus = false;
+
+// Define questions and answers with difficulty levels
+struct Question {
+  String question;
+  String answers[4];
+  int correctAnswer;
+};
+
+// Math questions - Difficulty level 1 (Ages 4-6)
+Question mathQuestions_easy[] = {
+  {"How many fingers do\nyou have on one hand?", {"3", "4", "5", "10"}, 2},
+  {"What comes after 3?", {"2", "4", "5", "6"}, 1},
+  {"1 + 1 = ?", {"1", "2", "3", "4"}, 1},
+  {"Which shape has\n3 sides?", {"Circle", "Square", "Triangle", "Rectangle"}, 2},
+  {"Count: 2, 4, 6, ?", {"7", "8", "9", "10"}, 1}
+};
+
+// Math questions - Difficulty level 2 (Ages 7-9)
+Question mathQuestions_medium[] = {
+  {"What is 5 + 7?", {"10", "11", "12", "13"}, 2},
+  {"9 x 3 = ?", {"18", "21", "27", "30"}, 3},
+  {"Half of 16 is?", {"4", "6", "8", "10"}, 2},
+  {"10 - 4 + 2 = ?", {"4", "6", "8", "12"}, 2},
+  {"How many minutes in\n2 hours?", {"60", "100", "120", "240"}, 2}
+};
+
+// Math questions - Difficulty level 3 (Ages 10-12)
+Question mathQuestions_hard[] = {
+  {"What is 12 x 8?", {"86", "96", "92", "108"}, 1},
+  {"Calculate: 45 / 9", {"4", "5", "6", "9"}, 1},
+  {"What is 3^3 (3 cubed)?", {"9", "18", "21", "27"}, 3},
+  {"If x + 15 = 23,\nwhat is x?", {"7", "8", "13", "38"}, 1},
+  {"A rectangle is 4cm by\n6cm. Area = ?", {"10cm²", "12cm²", "20cm²", "24cm²"}, 3}
+};
+
+// Science questions - Difficulty level 1 (Ages 4-6)
+Question scienceQuestions_easy[] = {
+  {"What color is the sky\non a sunny day?", {"Blue", "Green", "Yellow", "Red"}, 0},
+  {"What do plants need\nto grow?", {"Candy", "Water", "Toys", "Cars"}, 1},
+  {"Which animal barks?", {"Cat", "Bird", "Dog", "Fish"}, 2},
+  {"How many legs does\na spider have?", {"4", "6", "8", "10"}, 2},
+  {"Sun rises in the?", {"North", "South", "East", "West"}, 2}
+};
+
+// Science questions - Difficulty level 2 (Ages 7-9)
+Question scienceQuestions_medium[] = {
+  {"Which is not a\nseason?", {"Summer", "Winter", "Autumn", "Monday"}, 3},
+  {"What do plants make\nusing sunlight?", {"Oxygen", "Water", "Food", "Soil"}, 2},
+  {"What is Earth's\nnatural satellite?", {"Sun", "Moon", "Mars", "Star"}, 1},
+  {"Humans breathe in?", {"Oxygen", "Carbon Dioxide", "Nitrogen", "Hydrogen"}, 0},
+  {"What is the largest\nanimal?", {"Elephant", "Blue Whale", "Giraffe", "Shark"}, 1}
+};
+
+// Science questions - Difficulty level 3 (Ages 10-12)
+Question scienceQuestions_hard[] = {
+  {"What is H2O?", {"Hydrogen", "Oxygen", "Water", "Air"}, 2},
+  {"Which planet has\nrings?", {"Earth", "Mars", "Jupiter", "Saturn"}, 3},
+  {"What is the hardest\nnatural substance?", {"Steel", "Stone", "Diamond", "Iron"}, 2},
+  {"Which element has\natomic number 1?", {"Carbon", "Oxygen", "Helium", "Hydrogen"}, 3},
+  {"What causes tides\non Earth?", {"Wind", "Rain", "Moon's gravity", "Sun's heat"}, 2}
+};
+
+// Geography questions - Difficulty level 1 (Ages 4-6)
+Question geoQuestions_easy[] = {
+  {"Where do fish live?", {"Trees", "Sky", "Water", "Mountains"}, 2},
+  {"What shape is the\nEarth?", {"Flat", "Square", "Round", "Triangle"}, 2},
+  {"Which is not a\ncolor on a rainbow?", {"Red", "Purple", "Brown", "Green"}, 2},
+  {"What animal lives in\nthe North Pole?", {"Penguin", "Polar Bear", "Lion", "Monkey"}, 1},
+  {"What do we need when\nit rains?", {"Sunglasses", "Umbrella", "Fan", "Hat"}, 1}
+};
+
+// Geography questions - Difficulty level 2 (Ages 7-9)
+Question geoQuestions_medium[] = {
+  {"What is the largest\nocean?", {"Atlantic", "Pacific", "Arctic", "Indian"}, 1},
+  {"Which country has\nthe Eiffel Tower?", {"USA", "England", "France", "Italy"}, 2},
+  {"How many continents\nare there?", {"5", "6", "7", "8"}, 2},
+  {"Which direction does\nthe sun set?", {"North", "East", "South", "West"}, 3},
+  {"What is the capital\nof England?", {"Paris", "Madrid", "London", "Rome"}, 2}
+};
+
+// Geography questions - Difficulty level 3 (Ages 10-12)
+Question geoQuestions_hard[] = {
+  {"What is the largest\ncountry by area?", {"China", "USA", "Canada", "Russia"}, 3},
+  {"On which continent is\nEgypt?", {"Asia", "Africa", "Europe", "Australia"}, 1},
+  {"What is the longest\nriver in the world?", {"Amazon", "Nile", "Yangtze", "Mississippi"}, 1},
+  {"Which city is known as\nthe 'Big Apple'?", {"Paris", "Tokyo", "New York", "London"}, 2},
+  {"What is the driest\ndesert on Earth?", {"Sahara", "Gobi", "Atacama", "Kalahari"}, 2}
+};
+
+void setup() {
+  // Initialize I2C bus
+  Wire.begin();
+  
+  // Initialize serial for debugging (optional)
+  Serial.begin(9600);
+  Serial.println("Quiz Game Starting...");
+  
+  // Initialize LCDs
+  questionLCD.init();
+  answerLCD1.init();
+  answerLCD2.init();
+  answerLCD3.init();
+  answerLCD4.init();
+  
+  // Turn on the backlight for all LCDs
+  questionLCD.backlight();
+  answerLCD1.backlight();
+  answerLCD2.backlight();
+  answerLCD3.backlight();
+  answerLCD4.backlight();
+  
+  // Initialize button pins
+  pinMode(questionButtonPin, INPUT_PULLUP);
+  pinMode(answer1ButtonPin, INPUT_PULLUP);
+  pinMode(answer2ButtonPin, INPUT_PULLUP);
+  pinMode(answer3ButtonPin, INPUT_PULLUP);
+  pinMode(answer4ButtonPin, INPUT_PULLUP);
+  
+  // Display welcome message
+  showWelcomeScreen();
+  delay(3000);
+  
+  // Show initial status screen
+  showStatusScreen();
+  statusDisplayStartTime = millis();
+  showingStatus = true;
+}
+
+void loop() {
+  // Check if status screen needs to be hidden
+  if (showingStatus && (millis() - statusDisplayStartTime >= statusDisplayDuration)) {
+    showingStatus = false;
+    displayCurrentQuestion();
+  }
+  
+  // Handle the question button with combination presses for difficulty change
+  int questionButtonReading = digitalRead(questionButtonPin);
+  
+  // Check if any answer button is held while question button is pressed (for difficulty change)
+  if (questionButtonReading == LOW) {
+    if (digitalRead(answer1ButtonPin) == LOW || 
+        digitalRead(answer2ButtonPin) == LOW || 
+        digitalRead(answer3ButtonPin) == LOW || 
+        digitalRead(answer4ButtonPin) == LOW) {
+      
+      // Change difficulty level
+      currentDifficulty = (currentDifficulty + 1) % NUM_DIFFICULTY_LEVELS;
+      currentQuestionIndex = 0;
+      
+      // Show status screen
+      showStatusScreen();
+      statusDisplayStartTime = millis();
+      showingStatus = true;
+      
+      // Wait for button release
+      while (digitalRead(questionButtonPin) == LOW) {
+        delay(10);
+      }
+    }
+  }
+  
+  // If question button state changed
+  if (questionButtonReading != lastQuestionButtonState) {
+    lastDebounceTime = millis();
+  }
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // If the button state has changed and is now pressed
+    if (questionButtonReading == LOW && lastQuestionButtonState == HIGH) {
+      // Button was just pressed (without answer buttons held)
+      if (singleClickPending) {
+        // Double-click detected - change question type
+        if (millis() - lastClickTime < doubleClickTime) {
+          currentQuestionType = (currentQuestionType + 1) % NUM_QUESTION_TYPES;
+          currentQuestionIndex = 0;
+          
+          // Show status screen
+          showStatusScreen();
+          statusDisplayStartTime = millis();
+          showingStatus = true;
+          
+          singleClickPending = false;
+        }
+      } else {
+        // First click
+        lastClickTime = millis();
+        singleClickPending = true;
+      }
+    }
+  }
+  
+  // Check if single click timeout has occurred
+  if (singleClickPending && (millis() - lastClickTime > doubleClickTime)) {
+    // Single click action - reset the score
+    score = 0;
+    
+    // Show status screen
+    showStatusScreen();
+    statusDisplayStartTime = millis();
+    showingStatus = true;
+    
+    singleClickPending = false;
+  }
+  
+  lastQuestionButtonState = questionButtonReading;
+  
+  // Only handle answer buttons if not showing status screen
+  if (!showingStatus) {
+    // Handle answer buttons
+    checkAnswerButton(answer1ButtonPin, lastAnswer1ButtonState, 0);
+    checkAnswerButton(answer2ButtonPin, lastAnswer2ButtonState, 1);
+    checkAnswerButton(answer3ButtonPin, lastAnswer3ButtonState, 2);
+    checkAnswerButton(answer4ButtonPin, lastAnswer4ButtonState, 3);
+  }
+}
+
+void showWelcomeScreen() {
+  questionLCD.clear();
+  questionLCD.setCursor(0, 0);
+  questionLCD.print("**** QUIZ GAME ****");
+  questionLCD.setCursor(0, 1);
+  questionLCD.print("Single click: Reset");
+  questionLCD.setCursor(0, 2);
+  questionLCD.print("Double click: Topic");
+  questionLCD.setCursor(0, 3);
+  questionLCD.print("Btn+Q: Change Age");
+  
+  // Initialize answer displays with category info
+  answerLCD1.clear();
+  answerLCD1.setCursor(0, 0);
+  answerLCD1.print("*** OPTION A ***");
+  
+  answerLCD2.clear();
+  answerLCD2.setCursor(0, 0);
+  answerLCD2.print("*** OPTION B ***");
+  
+  answerLCD3.clear();
+  answerLCD3.setCursor(0, 0);
+  answerLCD3.print("*** OPTION C ***");
+  
+  answerLCD4.clear();
+  answerLCD4.setCursor(0, 0);
+  answerLCD4.print("*** OPTION D ***");
+}
+
+void showStatusScreen() {
+  questionLCD.clear();
+  questionLCD.setCursor(0, 0);
+  questionLCD.print("**** STATUS ****");
+  
+  questionLCD.setCursor(0, 1);
+  questionLCD.print("Topic: ");
+  questionLCD.print(questionTypes[currentQuestionType]);
+  
+  questionLCD.setCursor(0, 2);
+  questionLCD.print("Level: ");
+  questionLCD.print(difficultyLevels[currentDifficulty]);
+  
+  questionLCD.setCursor(0, 3);
+  questionLCD.print("Score: ");
+  questionLCD.print(score);
+}
+
+void checkAnswerButton(int pin, int &lastState, int answerIndex) {
+  int reading = digitalRead(pin);
+  
+  if (reading != lastState) {
+    lastDebounceTime = millis();
+  }
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading == LOW && lastState == HIGH) {
+      // Button was just pressed
+      checkAnswer(answerIndex);
+    }
+  }
+  
+  lastState = reading;
+}
+
+void checkAnswer(int selectedAnswerIndex) {
+  int correctAnswer = getCorrectAnswer();
+  
+  // Display feedback on the question LCD
+  questionLCD.setCursor(0, 3);
+  questionLCD.print("                    "); // Clear last line
+  questionLCD.setCursor(0, 3);
+  
+  // Check if the answer is correct
+  if (selectedAnswerIndex == correctAnswer) {
+    score += 10;
+    questionLCD.print("CORRECT! +10 points");
+    // Flash the correct answer display to indicate correct answer
+    flashDisplay(selectedAnswerIndex, true);
+  } else {
+    score = (score > 0) ? score - 5 : 0;
+    questionLCD.print("WRONG! -5 points");
+    // Flash the selected display to indicate wrong answer
+    flashDisplay(selectedAnswerIndex, false);
+  }
+  
+  // Short delay to show the feedback
+  delay(1500);
+  
+  // Move to the next question
+  moveToNextQuestion();
+}
+
+int getCorrectAnswer() {
+  // Get the correct answer based on the current question type and difficulty
+  switch (currentQuestionType) {
+    case 0: // Maths
+      switch (currentDifficulty) {
+        case 0: return mathQuestions_easy[currentQuestionIndex].correctAnswer;
+        case 1: return mathQuestions_medium[currentQuestionIndex].correctAnswer;
+        case 2: return mathQuestions_hard[currentQuestionIndex].correctAnswer;
+      }
+      break;
+    case 1: // Science
+      switch (currentDifficulty) {
+        case 0: return scienceQuestions_easy[currentQuestionIndex].correctAnswer;
+        case 1: return scienceQuestions_medium[currentQuestionIndex].correctAnswer;
+        case 2: return scienceQuestions_hard[currentQuestionIndex].correctAnswer;
+      }
+      break;
+    case 2: // Geography
+      switch (currentDifficulty) {
+        case 0: return geoQuestions_easy[currentQuestionIndex].correctAnswer;
+        case 1: return geoQuestions_medium[currentQuestionIndex].correctAnswer;
+        case 2: return geoQuestions_hard[currentQuestionIndex].correctAnswer;
+      }
+      break;
+  }
+  return -1; // Error case
+}
+
+void flashDisplay(int displayIndex, bool correct) {
+  // Visual feedback for answers
+  LiquidCrystal_I2C* targetLCD;
+  
+  switch (displayIndex) {
+    case 0: targetLCD = &answerLCD1; break;
+    case 1: targetLCD = &answerLCD2; break;
+    case 2: targetLCD = &answerLCD3; break;
+    case 3: targetLCD = &answerLCD4; break;
+    default: return;
+  }
+  
+  // Flash display 3 times
+  for (int i = 0; i < 3; i++) {
+    targetLCD->noBacklight();
+    delay(100);
+    targetLCD->backlight();
+    delay(100);
+  }
+}
+
+void moveToNextQuestion() {
+  // Get the number of questions for the current type and difficulty
+  int numQuestions = 0;
+  switch (currentQuestionType) {
+    case 0: // Maths
+      numQuestions = 5; // All difficulty levels have 5 questions
+      break;
+    case 1: // Science
+      numQuestions = 5; // All difficulty levels have 5 questions
+      break;
+    case 2: // Geography
+      numQuestions = 5; // All difficulty levels have 5 questions
+      break;
+  }
+  
+  // Move to the next question
+  currentQuestionIndex = (currentQuestionIndex + 1) % numQuestions;
+  
+  // Display the new question
+  displayCurrentQuestion();
+}
+
+void displayCurrentQuestion() {
+  Question* currentQuestion = getCurrentQuestion();
+  
+  // Display question with category, difficulty and question number
+  questionLCD.clear();
+  questionLCD.setCursor(0, 0);
+  // Show first 6 chars of question type and first 6 chars of difficulty level
+  questionLCD.print(questionTypes[currentQuestionType].substring(0, 6));
+  questionLCD.print(" ");
+  questionLCD.print(difficultyLevels[currentDifficulty].substring(0, 6));
+  questionLCD.print(" S:");
+  questionLCD.print(score);
+  
+  // Display question text - can use lines 1 and 2 (20 chars each)
+  // Find newline if present
+  String questionText = currentQuestion->question;
+  int newlinePos = questionText.indexOf('\n');
+  
+  if (newlinePos != -1) {
+    // Split at newline
+    questionLCD.setCursor(0, 1);
+    questionLCD.print(questionText.substring(0, newlinePos));
+    questionLCD.setCursor(0, 2);
+    questionLCD.print(questionText.substring(newlinePos + 1));
+  } else {
+    // No newline, just show on line 1
+    questionLCD.setCursor(0, 1);
+    questionLCD.print(questionText);
+  }
+  
+  // Line 3 is left empty for feedback during answering
+  
+  // Display answers
+  answerLCD1.clear();
+  answerLCD1.setCursor(0, 0);
+  answerLCD1.print("********** A **********");
+  answerLCD1.setCursor(0, 1);
+  answerLCD1.print(currentQuestion->answers[0]);
+  
+  answerLCD2.clear();
+  answerLCD2.setCursor(0, 0);
+  answerLCD2.print("********** B **********");
+  answerLCD2.setCursor(0, 1);
+  answerLCD2.print(currentQuestion->answers[1]);
+  
+  answerLCD3.clear();
+  answerLCD3.setCursor(0, 0);
+  answerLCD3.print("********** C **********");
+  answerLCD3.setCursor(0, 1);
+  answerLCD3.print(currentQuestion->answers[2]);
+  
+  answerLCD4.clear();
+  answerLCD4.setCursor(0, 0);
+  answerLCD4.print("********** D **********");
+  answerLCD4.setCursor(0, 1);
+  answerLCD4.print(currentQuestion->answers[3]);
+}
+
+Question* getCurrentQuestion() {
+  // Get the current question based on the current question type and difficulty
+  switch (currentQuestionType) {
+    case 0: // Maths
+      switch (currentDifficulty) {
+        case 0: return &mathQuestions_easy[currentQuestionIndex];
+        case 1: return &mathQuestions_medium[currentQuestionIndex];
+        case 2: return &mathQuestions_hard[currentQuestionIndex];
+      }
+      break;
+    case 1: // Science
+      switch (currentDifficulty) {
+        case 0: return &scienceQuestions_easy[currentQuestionIndex];
+        case 1: return &scienceQuestions_medium[currentQuestionIndex];
+        case 2: return &scienceQuestions_hard[currentQuestionIndex];
+      }
+      break;
+    case 2: // Geography
+      switch (currentDifficulty) {
+        case 0: return &geoQuestions_easy[currentQuestionIndex];
+        case 1: return &geoQuestions_medium[currentQuestionIndex];
+        case 2: return &geoQuestions_hard[currentQuestionIndex];
+      }
+      break;
+  }
+  
+  // Error case - should never happen
+  return &mathQuestions_easy[0];
+}
