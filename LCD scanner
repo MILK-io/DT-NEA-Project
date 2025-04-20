@@ -1,20 +1,3 @@
-/**
- * I2C LCD Scanner
- * 
- * This sketch scans the I2C bus for devices and displays their addresses
- * on a 20x4 I2C LCD display. Perfect for finding the address of an LCD
- * or other I2C devices in your project.
- * 
- * Hardware:
- * - Arduino board (Uno, Nano, Mega, etc.)
- * - 20x4 I2C LCD display (typically with PCF8574 I2C adapter)
- * 
- * Connections:
- * - SDA: Connect to Arduino SDA pin (A4 on Uno/Nano, 20 on Mega)
- * - SCL: Connect to Arduino SCL pin (A5 on Uno/Nano, 21 on Mega)
- * - VCC: Connect to Arduino 5V
- * - GND: Connect to Arduino GND
- */
 
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
