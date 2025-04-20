@@ -1,120 +1,73 @@
-# DT-NEA-Project
+# Quiz Game Interface Guide
 
-# Arduino Multi-LCD Quiz Game
+## Welcome Screen (Initial startup)
 
-## Overview
-This Arduino-based interactive quiz game uses multiple I2C LCD displays to create an engaging educational experience for children. The game features:
-
-- 5 LCD displays (20x4 character size) - one for questions and four for answer choices
-- 5 buttons for interaction - one control button and four answer buttons
-- Three subject categories: Maths, Science, and Geography
-- Three difficulty levels: Ages 4-6, Ages 7-9, and Ages 10-12
-- Score tracking system with points for correct/incorrect answers
-- Simple interface with visual feedback
-
-## Hardware Requirements
-- Arduino board (Uno, Mega, or similar)
-- 5 LCD displays (20x4) with I2C adapters
- - Question display (I2C address: 0x27)
- - Answer A display (I2C address: 0x26)
- - Answer B display (I2C address: 0x25)
- - Answer C display (I2C address: 0x24)
- - Answer D display (I2C address: 0x23)
-- 5 push buttons
-- Jumper wires
-- Breadboard or custom PCB
-- 5V power supply (capable of powering all LCDs)
-
-## Wiring Instructions
-1. **I2C Connection**
-  - Connect SDA pins of all LCDs to the Arduino's SDA pin
-  - Connect SCL pins of all LCDs to the Arduino's SCL pin
-  - Connect VCC pins of all LCDs to 5V
-  - Connect GND pins of all LCDs to ground
-
-2. **Button Connections**
-  - Control button: Connect between digital pin 2 and ground
-  - Answer A button: Connect between digital pin 3 and ground
-  - Answer B button: Connect between digital pin 4 and ground
-  - Answer C button: Connect between digital pin 5 and ground
-  - Answer D button: Connect between digital pin 6 and ground
-
-**Note:** All buttons use the Arduino's internal pull-up resistors, so no external resistors are needed.
-
-## Software Setup
-1. Install the required libraries:
-  - Wire.h (included with Arduino IDE)
-  - LiquidCrystal_I2C.h (can be installed via Library Manager)
-
-2. Download and open the quiz game code in the Arduino IDE
-
-3. Verify and upload the code to your Arduino board
-
-## Customizing the Quiz
-The quiz questions are organized into arrays by subject and difficulty level:
-- `mathQuestions_easy`, `mathQuestions_medium`, `mathQuestions_hard`
-- `scienceQuestions_easy`, `scienceQuestions_medium`, `scienceQuestions_hard`
-- `geoQuestions_easy`, `geoQuestions_medium`, `geoQuestions_hard`
-
-To add or modify questions:
-1. Locate the appropriate array based on the subject and difficulty level
-2. Each question is defined with:
-  - Question text (can include `\n` for line breaks)
-  - Four answer choices in an array
-  - The index of the correct answer (0-3, where 0 is the first answer)
-
-Example:
-```cpp
-{"What is 5 + 7?", {"10", "11", "12", "13"}, 2}  // Answer: 12 (index 2)
+**Main Display:**
+```
+**** QUIZ GAME ****
+Single click: Reset
+Double click: Topic
+Btn+Q: Change Age
 ```
 
-## Using the Game
-1. **Starting the Game**
-  - When powered on, the game displays welcome instructions
-  - After 3 seconds, it shows the status screen with current topic, level, and score
-  - After 5 seconds, the first question appears
+**Answer Displays:** Each shows its corresponding option label (A, B, C, or D)
 
-2. **Game Controls**
-  - **Answer Buttons (A, B, C, D)**: Press to select an answer
-  - **Control Button (Single Click)**: Reset score to zero
-  - **Control Button (Double Click)**: Change question category (Maths → Science → Geography)
-  - **Control + Any Answer Button**: Change difficulty level (Ages 4-6 → Ages 7-9 → Ages 10-12)
+## Status Screen
 
-3. **Scoring System**
-  - Correct answer: +10 points
-  - Incorrect answer: -5 points (minimum score is 0)
+```
+**** STATUS ****
+Topic: MATHS
+Level: Ages 4-6
+Score: 0
+```
+*This appears temporarily when changing settings or after reset*
 
-4. **Display Feedback**
-  - Correct answers: The selected answer display flashes three times
-  - Incorrect answers: The selected answer display flashes three times
-  - Text feedback appears on the question display
+## Game Interface
 
-## I2C Address Troubleshooting
-If your LCDs have different I2C addresses than specified in the code:
+### Example Math Question (Ages 4-6)
 
-1. Run an I2C scanner sketch (available in many I2C library examples) to identify the actual addresses of your LCDs
-
-2. Update the addresses in the code:
-```cpp
-LiquidCrystal_I2C questionLCD(0x27, 20, 4);  // Change 0x27 to your address
-// Update other LCD addresses as needed
+**Main Display:**
+```
+MATHS  Ages  S:0
+How many fingers do
+you have on one hand?
 ```
 
-## Extending the Game
-- **More Questions**: Add more questions to each array or create new question categories
-- **Timer Feature**: Implement a time limit for answering questions
-- **Sound Effects**: Add a buzzer for audio feedback
-- **High Score Tracking**: Use EEPROM to save and display high scores
-- **Multiple Choice Types**: Add true/false or numeric entry questions
+**Answer Options:**
+- **A:** "3"
+- **B:** "4"
+- **C:** "5" (correct)
+- **D:** "10"
 
-## Notes on Question Display
-- Questions can be up to  40 characters (2 lines of 20 characters each)
-- Use `\n` in the question text to force a line break
-- Answers display on separate LCDs, allowing for longer answer texts
+### After Selecting an Answer
 
+**When Correct:**
+- Bottom line shows: "CORRECT! +10 points"
+- Correct answer display flashes
+- Score increases by 10
 
-## Technical Details
-- Button debouncing is implemented to prevent multiple triggers
-- Double-click detection uses time-based logic
-- Display flashing provides visual feedback for answers
-- Question cycling loops back to the beginning after reaching the end
+**When Incorrect:**
+- Bottom line shows: "WRONG! -5 points"
+- Selected answer display flashes
+- Score decreases by 5
+
+## Controls
+
+- **Single click Question button:** Reset score
+- **Double click Question button:** Change topic (Math → Science → Geography)
+- **Hold any Answer button + press Question button:** Change difficulty level
+- **Press Answer button (A/B/C/D):** Select that answer
+
+## Question Categories
+
+- **Math:** Basic arithmetic, counting, shapes
+- **Science:** Nature, animals, space, elements
+- **Geography:** Places, landmarks, environments
+
+## Difficulty Levels
+
+- **Ages 4-6:** Very simple questions
+- **Ages 7-9:** Moderate difficulty
+- **Ages 10-12:** More challenging questions
+
+*Each question will appear for a few seconds before moving to the next one after an answer is selected.*
