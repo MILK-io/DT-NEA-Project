@@ -1,0 +1,148 @@
+When the system powers on, you would first see the welcome screen:
+
+**Question LCD (20x4)**:
+```
+**** QUIZ GAME ****
+Single click: Reset
+Double click: Topic
+Btn+Q: Change Age
+```
+
+**Answer LCD 1 (20x4)**:
+```
+*** OPTION A ***
+
+```
+
+**Answer LCD 2 (20x4)**:
+```
+*** OPTION B ***
+
+```
+
+**Answer LCD 3 (20x4)**:
+```
+*** OPTION C ***
+
+```
+
+**Answer LCD 4 (20x4)**:
+```
+*** OPTION D ***
+
+```
+
+After 3 seconds, the status screen would appear:
+
+**Question LCD (20x4)**:
+```
+**** STATUS ****
+Topic: MATHS
+Level: Ages 4-6
+Score: 0
+```
+
+After 5 seconds, the first question would appear:
+
+**Question LCD (20x4)**:
+```
+MATHS  Ages  S:0
+How many fingers do
+you have on one hand?
+
+```
+
+**Answer LCD 1 (20x4)**:
+```
+********** A **********
+3
+
+```
+
+**Answer LCD 2 (20x4)**:
+```
+********** B **********
+4
+
+```
+
+**Answer LCD 3 (20x4)**:
+```
+********** C **********
+5
+
+```
+
+**Answer LCD 4 (20x4)**:
+```
+********** D **********
+10
+
+```
+
+If the player selects the correct answer (C in this case):
+
+**Question LCD (last line)**:
+```
+CORRECT! +10 points
+```
+(And the Answer LCD 3 would flash 3 times)
+
+After a short delay, the next question appears:
+
+**Question LCD (20x4)**:
+```
+MATHS  Ages  S:10
+What comes after 3?
+
+```
+
+**Answer LCD 1 (20x4)**:
+```
+********** A **********
+2
+
+```
+
+**Answer LCD 2 (20x4)**:
+```
+********** B **********
+4
+
+```
+(And so on for the other answers)
+
+If the player wants to change the topic, they would double-click the question button, which would display the status screen with the next topic:
+
+**Question LCD (20x4)**:
+```
+**** STATUS ****
+Topic: SCIENCE
+Level: Ages 4-6
+Score: 10
+```
+
+After 5 seconds, a science question for ages 4-6 would appear:
+
+**Question LCD (20x4)**:
+```
+SCIENC Ages  S:10
+What color is the sky
+on a sunny day?
+
+```
+
+Similarly, if the player holds any answer button while pressing the question button, the difficulty level would change, and the status screen would show:
+
+**Question LCD (20x4)**:
+```
+**** STATUS ****
+Topic: SCIENCE
+Level: Ages 7-9
+Score: 10
+```
+
+After 5 seconds, a science question for ages 7-9 would appear.
+
+This flow continues as players interact with the quiz game, selecting answers, changing topics, or adjusting difficulty levels while their score accumulates based on correct/incorrect answers.​​​​​​​​​​​​​​​​
+Sent from my iPad
