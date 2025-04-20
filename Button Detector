@@ -1,0 +1,57 @@
+
+// Define the pins to scan 
+const int NUM_PINS = 12;  // Number of pins to scan
+const int PINS[NUM_PINS] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};  // Array of pins to scan
+
+// Variables to track button state
+int currentButton = -1;   // Currently pressed button (-1 means no button)
+int lastButton = -1;      // Previously pressed button
+boolean buttonPressed = false;
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Arduino Button Scanner");
+  Serial.println("Press buttons to see which pin they're connected to");
+  
+  // Set all pins as INPUT_PULLUP 
+  for (int i = 0; i < NUM_PINS; i++) {
+    pinMode(PINS[i], INPUT_PULLUP);
+  }
+}
+
+void loop() {
+  // Scan all pins
+  buttonPressed = false;
+  currentButton = -1;
+  
+  for (int i = 0; i < NUM_PINS; i++) {
+    // Button is pressed when pin reads LOW (because of INPUT_PULLUP)
+    if (digitalRead(PINS[i]) == LOW) {
+      currentButton = i;
+      buttonPressed = true;
+      break;  // Exit loop once a button is found
+    }
+  }
+  
+  // If a button was pressed and it's different from the last one
+  if (buttonPressed && currentButton != lastButton) {
+    Serial.print("Button pressed on pin: ");
+    Serial.print(PINS[currentButton]);
+    Serial.print(" (Button #");
+    Serial.print(currentButton + 1);
+    Serial.println(")");
+    
+    lastButton = currentButton;
+    delay(50);  // Debounce delay
+  }
+  
+  // If no button is pressed now but one was pressed before
+  if (!buttonPressed && lastButton != -1) {
+    Serial.println("All buttons released");
+    lastButton = -1;
+    delay(50);  // Debounce delay
+  }
+  
+  // Small delay to avoid flooding the serial monitor
+  delay(10);
+}
