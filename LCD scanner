@@ -3,7 +3,6 @@
 #include <LiquidCrystal_I2C.h>
 
 // Default address for most I2C LCD displays (0x27)
-// If your LCD doesn't work with this address, the scanner will help find it
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 void setup() {
@@ -16,7 +15,6 @@ void setup() {
   
   // Initialize LCD with default address
   // This might fail if the default address is incorrect
-  // Don't worry - we'll scan and find the correct one
   lcd.init();
   lcd.backlight();
   lcd.clear();
