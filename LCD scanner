@@ -1,121 +1,42 @@
-
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-
-// Default address for most I2C LCD displays (0x27)
-LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 void setup() {
-  // Initialize Serial communication
+  // Initialize serial communication
   Serial.begin(9600);
-  Serial.println("I2C LCD Scanner Starting...");
+  while (!Serial) {
+    // Wait for serial port to connect 
+    delay(10);
+  }
   
   // Initialize I2C communication
   Wire.begin();
-  
-  // Initialize LCD with default address
-  // This might fail if the default address is incorrect
-  lcd.init();
-  lcd.backlight();
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("I2C LCD Scanner");
-  lcd.setCursor(0, 1);
-  lcd.print("Scanning...");
-  
-  delay(2000);
 }
 
 void loop() {
   byte error, address;
-  int devicesFound = 0;
   
-  // Clear LCD and prepare for new scan
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("I2C LCD Scanner");
-  lcd.setCursor(0, 1);
-  lcd.print("Scanning...");
+  Serial.println("Scanning I2C bus...\n");
   
-  Serial.println("Scanning I2C bus...");
-  
-  // Scan I2C addresses from 1 to 127
-  for (address = 1; address < 128; address++ ) {
-    // The i2c_scanner uses the return value of
-    // the Write.endTransmisstion to see if
-    // a device acknowledged the address.
+  // The I2C address range is 0x08 to 0x77
+  for (address = 8; address <= 119; address++) {
+    // The Wire.endTransmission function returns 0 if device is present
     Wire.beginTransmission(address);
     error = Wire.endTransmission();
-
+    
     if (error == 0) {
-      // Device found at this address
-      devicesFound++;
-      
-      // Display on serial monitor
+      // Device found at this address - print in the specified format
       Serial.print("I2C device found at address 0x");
-      if (address < 16) Serial.print("0");
-      Serial.print(address, HEX);
-      Serial.println(" !");
       
-      // Display on LCD
-      lcd.setCursor(0, 2);
-      lcd.print("Found at: 0x");
-      if (address < 16) lcd.print("0");
-      lcd.print(address, HEX);
-      
-      // If this is an LCD, display success message on it
-      // Try to communicate with the found device as if it's an LCD
-      tryDisplayOnLCD(address);
-      
-      delay(1000); // Pause to see result
-    }
-    else if (error == 4) {
-      Serial.print("Unknown error at address 0x");
-      if (address < 16) Serial.print("0");
+      // Print the address in hexadecimal format with leading zero if necessary
+      if (address < 16) {
+        Serial.print("0");
+      }
       Serial.println(address, HEX);
     }
   }
   
-  // Show scan results summary
-  lcd.setCursor(0, 1);
-  lcd.print("Found ");
-  lcd.print(devicesFound);
-  lcd.print(" device(s)    ");
+  Serial.println("\nScan complete.");
   
-  if (devicesFound == 0) {
-    Serial.println("No I2C devices found");
-    lcd.setCursor(0, 2);
-    lcd.print("No devices found    ");
-  }
-  
-  // Wait before next scan
-  Serial.println("Scan complete. Waiting 5 seconds...");
-  lcd.setCursor(0, 3);
-  lcd.print("Scanning again in 5s");
+  // Wait 5 seconds before scanning again
   delay(5000);
-}
-
-void tryDisplayOnLCD(byte address) {
-  // Try to use the found address as an LCD
-  LiquidCrystal_I2C testLcd(address, 20, 4);
-  
-  // Initialize and try to display
-  testLcd.init();
-  testLcd.backlight();
-  testLcd.clear();
-  testLcd.setCursor(0, 0);
-  testLcd.print("LCD found!");
-  testLcd.setCursor(0, 1);
-  testLcd.print("My address: 0x");
-  if (address < 16) testLcd.print("0");
-  testLcd.print(address, HEX);
-  testLcd.setCursor(0, 2);
-  testLcd.print("I2C Scanner");
-  testLcd.setCursor(0, 3);
-  testLcd.print("Success!");
-  
-  // If we reach here, the address may be an LCD
-  Serial.print("Tried to display on LCD at address 0x");
-  if (address < 16) Serial.print("0");
-  Serial.println(address, HEX);
 }
