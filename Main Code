@@ -140,7 +140,7 @@ void setup() {
   // Initialize I2C bus
   Wire.begin();
   
-  // Initialize serial for debugging (optional)
+  // Initialize serial for debugging 
   Serial.begin(9600);
   Serial.println("Quiz Game Starting...");
   
